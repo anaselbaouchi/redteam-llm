@@ -179,4 +179,4 @@ if __name__ == "__main__":
         print(repeat_findings)
 
         safe_model = client.model.replace(":", "_").replace("/", "_")
-        export_results(findings, repeat_findings, f"llm10_results_{client.provider}_{safe_model}.json")
+        export_results(findings, repeat_findings, f"results/llm10/llm10_results_{client.provider}_{safe_model}.json")

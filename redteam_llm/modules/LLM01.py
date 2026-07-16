@@ -286,4 +286,4 @@ if __name__ == "__main__":
         print_buff_comparison(buff_findings)
     
         safe_model = client.model.replace(":", "_").replace("/", "_")
-        export_results(all_findings, buff_findings, client, f"llm01_results_{client.provider}_{safe_model}.json")
+        export_results(all_findings, buff_findings, client, f"results/llm01/llm01_results_{client.provider}_{safe_model}.json")
