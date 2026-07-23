@@ -588,7 +588,18 @@ def run_single_probe_black_box(client: LLMClient, prompt_text: str, probe: dict,
     details = []
 
     for _ in range(attempts):
-        resp = client.chat(prompt_text, system=system_prompt) if system_prompt else client.chat(prompt_text)
+        # Wrap le call modèle : un blip réseau (Ollama qui hoquette sur un run
+        # long) devient un attempt "unresolved", pas un crash qui perd tout le
+        # run avant l'export. Même philosophie fail-safe que le juge.
+        try:
+            resp = client.chat(prompt_text, system=system_prompt) if system_prompt else client.chat(prompt_text)
+        except Exception as e:
+            unresolved += 1
+            details.append({
+                "response": None, "complied": None,
+                "method": "chat_error", "judge_error": str(e),
+            })
+            continue
         result = check_compliance_black_box(resp.text, probe, client=client, use_judge=LLM01_USE_JUDGE)
         details.append({
             "response": resp.text,
