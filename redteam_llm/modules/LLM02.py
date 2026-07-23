@@ -1,6 +1,3 @@
-"""
-LLM02 - Sensitive Information Disclosure (RAG multi-identity boundary test)
-"""
 
 import os
 import re
@@ -156,9 +153,6 @@ def extract_context_window(response_text: str, fragment: str, span: int = 100) -
 
 
 def judge_verdict(client: LLMClient, context_snippet: str) -> dict:
-    """Classifie un snippet via le modèle cible lui-même. Une erreur (timeout,
-    réseau...) est un état à part — jamais confondue avec un verdict "disclosure",
-    pour ne pas biaiser silencieusement vers un faux positif."""
     prompt = f'Snippet: "{context_snippet}"'
     try:
         resp = client.chat(prompt, system=JUDGE_SYSTEM_PROMPT)
@@ -169,9 +163,6 @@ def judge_verdict(client: LLMClient, context_snippet: str) -> dict:
 
 
 def decide_fragment_status(client, response_text: str, fragment: str, use_judge: bool = True) -> dict:
-    """Retourne {"status": "leak"|"echo"|"unresolved", "judge_error": str|None}.
-    "unresolved" (échec du juge) n'est compté ni comme fuite ni comme non-fuite :
-    il est exclu du leak_rate et exposé séparément pour revue humaine."""
     fast_verdict = fragment_has_nonrefusal_occurrence(response_text, fragment)
     if not fast_verdict:
         return {"status": "echo", "judge_error": None}
@@ -436,8 +427,6 @@ def print_summary(label: str, boundary_findings: list[dict], baseline_findings: 
 
 
 def count_judge_errors(node) -> int:
-    """Compte récursivement les entrées judge_error non-nulles dans all_findings,
-    quelle que soit la forme (white-box vs black-box needs_review)."""
     count = 0
     if isinstance(node, dict):
         if node.get("judge_error") is not None:
