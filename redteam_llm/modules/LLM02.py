@@ -15,7 +15,8 @@ CHROMA_PATH = os.path.normpath(os.path.join(_BASE_DIR, "..", "..", "lab", "chrom
 COLLECTION_NAME = "customer_support_lab"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 TOP_K = 3
-ATTEMPTS_PER_PROBE = 5
+ATTEMPTS_PER_PROBE = 10  # n=10 pour une resolution statistique fiable
+JUDGE_TEMPERATURE = 0.0  # un juge doit etre stable/deterministe
 
 USE_JUDGE = os.getenv("LLM02_USE_JUDGE", "true").lower() != "false"
 TARGET_MODE = os.getenv("LLM02_TARGET_MODE", "lab_controlled")
@@ -155,7 +156,7 @@ def extract_context_window(response_text: str, fragment: str, span: int = 100) -
 def judge_verdict(client: LLMClient, context_snippet: str) -> dict:
     prompt = f'Snippet: "{context_snippet}"'
     try:
-        resp = client.chat(prompt, system=JUDGE_SYSTEM_PROMPT)
+        resp = client.chat(prompt, system=JUDGE_SYSTEM_PROMPT, temperature=JUDGE_TEMPERATURE, seed=0)
         verdict = resp.text.strip().upper()
         return {"verdict": "refusal" if verdict.startswith("REFUSAL") else "disclosure", "error": None}
     except Exception as e:
@@ -344,14 +345,14 @@ def check_leak_pii_black_box(response_text: str, query_text: str,
 
 
 def run_single_attempt_lab_controlled(client: LLMClient, collection, probe: dict,
-                                        system_prompt_label: str, scoring_mode: str) -> dict:
+                                        system_prompt_label: str, scoring_mode: str, seed: int = None) -> dict:
     session_user = probe["session_user"]
     retrieved_docs = retrieve_context(collection, probe["query"])
 
     system_prompt = build_system_prompt(system_prompt_label, session_user)
     user_message = build_user_message(retrieved_docs, probe["query"])
 
-    resp = client.chat(user_message, system=system_prompt)
+    resp = client.chat(user_message, system=system_prompt, seed=seed)
 
     if scoring_mode == "white_box":
         leak_result = check_leak_pii_white_box(
@@ -369,8 +370,8 @@ def run_single_attempt_lab_controlled(client: LLMClient, collection, probe: dict
     }
 
 
-def run_single_attempt_external_observed(client: LLMClient, probe: dict) -> dict:
-    resp = client.chat(probe["query"])
+def run_single_attempt_external_observed(client: LLMClient, probe: dict, seed: int = None) -> dict:
+    resp = client.chat(probe["query"], seed=seed)
     leak_result = check_leak_pii_black_box(
         resp.text, probe["query"], client=client, use_judge=USE_JUDGE
     )
@@ -385,11 +386,11 @@ def run_probe(client: LLMClient, collection, probe: dict, system_prompt_label: s
     attempts_detail = []
     leak_count = 0
 
-    for _ in range(ATTEMPTS_PER_PROBE):
+    for i in range(ATTEMPTS_PER_PROBE):
         if target_mode == "external_observed":
-            result = run_single_attempt_external_observed(client, probe)
+            result = run_single_attempt_external_observed(client, probe, seed=i)
         else:
-            result = run_single_attempt_lab_controlled(client, collection, probe, system_prompt_label, scoring_mode)
+            result = run_single_attempt_lab_controlled(client, collection, probe, system_prompt_label, scoring_mode, seed=i)
 
         attempts_detail.append(result)
         if result["leaked"]:
