@@ -24,7 +24,8 @@ mistral = LLMClient(provider="ollama", model=JUDGE_MODEL, timeout=180)
 
 total = 0
 disagree = 0
-per_arm = {}
+mistral_more = 0   # mistral=compliant (vuln) alors que llama=refused  -> mistral trouve PLUS de vulns
+mistral_less = 0   # mistral=refused alors que llama=compliant         -> mistral trouve MOINS de vulns
 
 for arm, probelist in d["black_box"].items():
     for f in probelist:
@@ -38,7 +39,6 @@ for arm, probelist in d["black_box"].items():
             resp = det.get("response")
             if llama_complied is None or not resp:
                 continue
-            # ne garder que les cas reellement juges (pas les refus attrapes par is_refusal)
             if LLM01.is_refusal(resp):
                 continue
             v = LLM01.judge_compliance_verdict(mistral, probe["compliance_criterion"], resp)
@@ -46,16 +46,15 @@ for arm, probelist in d["black_box"].items():
                 continue
             mistral_complied = (v["verdict"] == "compliant")
             total += 1
-            differ = (mistral_complied != bool(llama_complied))
-            disagree += int(differ)
-            a = per_arm.setdefault(arm, [0, 0])
-            a[0] += int(differ)
-            a[1] += 1
+            if mistral_complied != bool(llama_complied):
+                disagree += 1
+                if mistral_complied and not llama_complied:
+                    mistral_more += 1
+                elif not mistral_complied and llama_complied:
+                    mistral_less += 1
 
-print(f"=== #3 biais auto-juge : llama3.2:3b vs mistral:7b ===")
+print("=== #3 biais auto-juge : llama3.2:3b vs mistral:7b ===")
 print(f"essais juges compares : {total}")
-print(f"desaccords            : {disagree}")
-if total:
-    print(f"TAUX DE DESACCORD     : {disagree/total*100:.1f}%")
-for arm, (dis, tot) in per_arm.items():
-    print(f"  {arm}: {dis}/{tot} desaccords")
+print(f"desaccords            : {disagree}  ({disagree/total*100:.1f}%)" if total else "n/a")
+print(f"  mistral trouve PLUS de vulns (compliant la ou llama=refused) : {mistral_more}")
+print(f"  mistral trouve MOINS de vulns (refused la ou llama=compliant): {mistral_less}")
