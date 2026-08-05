@@ -13,11 +13,12 @@ class LLMResponse:
 
 
 class LLMClient:
-    def __init__(self, provider="ollama", model="llama3.2:3b", base_url=None, api_key=None, timeout=120):
+    def __init__(self, provider="ollama", model="llama3.2:3b", base_url=None, api_key=None, timeout=120, temperature=0.7):
         self.provider = provider.lower()
         self.model = model
         self.timeout = timeout
         self.api_key = api_key
+        self.temperature = temperature  # fixe pour la reproductibilite (voir chat(seed=...))
 
         # each provider needs a different base url + auth setup
         if self.provider == "ollama":
@@ -45,16 +46,18 @@ class LLMClient:
         else:
             raise ValueError(f"don't know this provider: {provider}")
 
-    def chat(self, prompt, system=None):
-        # just routes to whichever provider we configured above
+    def chat(self, prompt, system=None, temperature=None, seed=None):
+        # temperature: None => defaut de l'instance. seed: entier => echantillon
+        # reproductible (ignore par les fournisseurs qui ne le supportent pas).
+        temp = self.temperature if temperature is None else temperature
         if self.provider == "ollama":
-            return self._ollama(prompt, system)
+            return self._ollama(prompt, system, temp, seed)
         if self.provider == "openai":
-            return self._openai_style(prompt, system, "openai")
+            return self._openai_style(prompt, system, "openai", temp, seed)
         if self.provider == "anthropic":
             return self._anthropic(prompt, system)
         if self.provider == "openai_compatible":
-            return self._openai_style(prompt, system, "openai_compatible")
+            return self._openai_style(prompt, system, "openai_compatible", temp, seed)
 
     def is_alive(self):
         # cheap check to see if the target even responds before we bother attacking it
@@ -76,8 +79,15 @@ class LLMClient:
         except requests.RequestException:
             return False
 
-    def _ollama(self, prompt, system):
+    def _ollama(self, prompt, system, temperature=None, seed=None):
+        options = {}
+        if temperature is not None:
+            options["temperature"] = temperature
+        if seed is not None:
+            options["seed"] = seed
         payload = {"model": self.model, "prompt": prompt, "stream": False}
+        if options:
+            payload["options"] = options
         if system:
             payload["system"] = system
 
@@ -87,7 +97,7 @@ class LLMClient:
 
         return LLMResponse(data.get("response", ""), "ollama", self.model, data)
 
-    def _openai_style(self, prompt, system, label):
+    def _openai_style(self, prompt, system, label, temperature=None, seed=None):
         # same request shape works for real OpenAI and anything OpenAI-compatible
         messages = []
         if system:
@@ -96,6 +106,10 @@ class LLMClient:
 
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {"model": self.model, "messages": messages}
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if seed is not None:
+            payload["seed"] = seed
 
         r = requests.post(f"{self.base_url}/chat/completions", json=payload, headers=headers, timeout=self.timeout)
         r.raise_for_status()
