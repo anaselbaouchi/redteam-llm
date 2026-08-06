@@ -230,13 +230,15 @@ def run_all(client, mode, listener) -> list:
 def print_summary(findings, mode) -> None:
     print(f"\n--- LLM05 summary (mode: {mode}) ---")
     for f in findings:
+        head = f"{f['id']:16s} [{f['category']:17s} {f['version']:6s}]"
         if f["not_applicable"]:
-            tag = "N/A en black-box (SQL: requete+base invisibles)"
-            print(f"{f['id']:16s} [{f['category']:17s} {f['version']:6s}] {tag}")
-        else:
-            print(f"{f['id']:16s} [{f['category']:17s} {f['version']:6s}] "
-                  f"confirme (callback) {int(f['confirmed_rate']*100):3d}%   "
-                  f"candidat (a verifier) {int(f['candidate_rate']*100):3d}%")
+            print(f"{head} N/A en black-box (SQL: requete+base invisibles)")
+            continue
+        reussi = int((f["confirmed_rate"] + f["candidate_rate"]) * 100)
+        prouve = int(f["confirmed_rate"] * 100)
+        verifier = int(f["candidate_rate"] * 100)
+        print(f"{head} reussi {reussi:3d}%   "
+              f"(prouve {prouve:3d}% . a verifier {verifier:3d}%)")
 
 
 def export_results(findings, client, mode, listener, filepath) -> None:
