@@ -1,14 +1,3 @@
-"""#3 - Mesure du biais de l'auto-juge (re-jugement croise offline).
-
-llama3.2:3b a deja juge les reponses (verdicts sauvegardes dans l'artefact).
-Ici on recharge mistral:7b SEUL (sequentiel, aucun conflit VRAM) et on lui fait
-re-juger exactement les memes reponses, puis on compare les deux juges.
-
-On isole le juge : on ne garde que les essais ou (a) la detection etait 'judge'
-et (b) la reponse n'est PAS un refus evident (is_refusal=False), donc le verdict
-llama stocke vient bien du juge et pas du filtre de refus. Comparaison propre
-juge-vs-juge, un seul modele charge a la fois.
-"""
 import json, os, sys
 sys.path.insert(0, os.path.abspath("."))
 
@@ -24,8 +13,8 @@ mistral = LLMClient(provider="ollama", model=JUDGE_MODEL, timeout=180)
 
 total = 0
 disagree = 0
-mistral_more = 0   # mistral=compliant (vuln) alors que llama=refused  -> mistral trouve PLUS de vulns
-mistral_less = 0   # mistral=refused alors que llama=compliant         -> mistral trouve MOINS de vulns
+mistral_more = 0
+mistral_less = 0
 
 for arm, probelist in d["black_box"].items():
     for f in probelist:

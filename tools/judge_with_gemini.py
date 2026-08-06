@@ -1,21 +1,3 @@
-"""
-Re-note des reponses LLM06 DEJA enregistrees avec un gros juge externe, sans
-relancer l'agent. On isole ainsi une seule variable: le juge.
-
-But: repondre a "le juge etait-il faible seulement parce qu'il etait petit ?".
-On compare, contre la verite terrain (les vrais appels d'outils):
-  - le juge local (llama3.2:3b) deja enregistre dans le fichier,
-  - un gros juge externe recalcule ici.
-
-Groq par defaut (free tier large). Gemini marche aussi mais son free tier est
-plafonne a 20 requetes/jour, insuffisant pour un lot de 90.
-
-Usage:
-  set GROQ_API_KEY=...          (cle gratuite depuis console.groq.com/keys)
-  python -m tools.judge_with_gemini results/llm06/<fichier>.json
-  # options: JUDGE_PROVIDER (groq|gemini|openai...), JUDGE_MODEL, JUDGE_SLEEP,
-  #          JUDGE_RETRIES, LIMIT (ne juger que N essais, pour un test pas cher)
-"""
 
 import os
 import sys
@@ -28,7 +10,6 @@ from redteam_llm.modules import LLM06
 
 
 def confusion(pairs):
-    # pairs = liste de (verite_bool, juge_bool)
     tp = fp = tn = fn = 0
     for g, e in pairs:
         if g and e: tp += 1
@@ -57,8 +38,8 @@ def main():
 
     provider = os.getenv("JUDGE_PROVIDER", "groq")
     model = os.getenv("JUDGE_MODEL", "llama-3.3-70b-versatile")
-    sleep = float(os.getenv("JUDGE_SLEEP", "4"))   # ~15 req/min = 1 toutes les 4s
-    limit = int(os.getenv("LIMIT", "0"))            # 0 = tout
+    sleep = float(os.getenv("JUDGE_SLEEP", "4"))
+    limit = int(os.getenv("LIMIT", "0"))
 
     judge = LLMClient(provider=provider, model=model, temperature=0.0, timeout=60,
                       max_retries=int(os.getenv("JUDGE_RETRIES", "6")))

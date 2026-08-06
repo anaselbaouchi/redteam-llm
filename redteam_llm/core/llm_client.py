@@ -1,15 +1,3 @@
-"""
-Client LLM unifie, agnostique du fournisseur.
-
-L'idee: la grande majorite des APIs parlent le format OpenAI (/chat/completions).
-Donc au lieu d'une branche par fournisseur, on a:
-  - un REGISTRE (PROVIDERS): une entree de config par fournisseur (donnee pure).
-  - quelques adaptateurs de FORMAT (5): openai, anthropic, ollama, cohere, bedrock.
-Ajouter un fournisseur compatible OpenAI = une ligne dans le registre, pas de code.
-
-L'interface publique (chat, is_alive, LLMResponse) ne change pas: les modules
-LLM01/02/06/10 continuent de marcher sans modification.
-"""
 
 import os
 import time
@@ -28,22 +16,17 @@ class LLMResponse:
 
 @dataclass
 class ProviderConfig:
-    format: str                       # openai | anthropic | ollama | cohere | bedrock
+    format: str
     base_url: str = ""
     api_key_env: Optional[str] = None
-    auth: str = "bearer"              # bearer | api-key-header | x-api-key | none
+    auth: str = "bearer"
     extra_headers: dict = field(default_factory=dict)
     default_model: Optional[str] = None
     supports_seed: bool = False
     aliases: tuple = ()
 
 
-# ---------------------------------------------------------------------------
-# REGISTRE : ajouter un fournisseur compatible OpenAI = une ligne ici.
-# ---------------------------------------------------------------------------
-
 PROVIDERS = {
-    # --- cloud / commercial ---
     "openai": ProviderConfig("openai", "https://api.openai.com/v1", "OPENAI_API_KEY",
                              default_model="gpt-4o-mini", supports_seed=True),
     "anthropic": ProviderConfig("anthropic", "https://api.anthropic.com/v1", "ANTHROPIC_API_KEY",
@@ -74,7 +57,6 @@ PROVIDERS = {
     "bedrock": ProviderConfig("bedrock", "", None, auth="none",
                               default_model="anthropic.claude-3-5-sonnet-20240620-v1:0"),
 
-    # --- local / auto-heberge ---
     "ollama": ProviderConfig("ollama", "http://localhost:11434", None, auth="none",
                              default_model="llama3.2:3b", supports_seed=True),
     "lmstudio": ProviderConfig("openai", "http://localhost:1234/v1", None, auth="none",
@@ -84,11 +66,9 @@ PROVIDERS = {
     "llamacpp": ProviderConfig("openai", "http://localhost:8080/v1", None, auth="none",
                                supports_seed=True, aliases=("llama_cpp",)),
 
-    # --- echappatoire generique: n'importe quel endpoint compatible OpenAI ---
     "openai_compatible": ProviderConfig("openai", "", None, auth="bearer", supports_seed=True),
 }
 
-# aliases -> nom canonique
 _ALIASES = {a: name for name, cfg in PROVIDERS.items() for a in cfg.aliases}
 
 
@@ -100,10 +80,6 @@ def resolve_provider(name: str) -> tuple:
     return key, PROVIDERS[key]
 
 
-# ---------------------------------------------------------------------------
-# CLIENT
-# ---------------------------------------------------------------------------
-
 class LLMClient:
     def __init__(self, provider="ollama", model=None, base_url=None, api_key=None,
                  timeout=120, temperature=0.7, max_retries=3):
@@ -113,34 +89,27 @@ class LLMClient:
         if not self.model:
             raise ValueError(f"aucun modele: passe model= pour le fournisseur '{self.provider}'")
         self.timeout = timeout
-        self.temperature = temperature  # fixe pour la reproductibilite (voir chat(seed=...))
+        self.temperature = temperature
         self.max_retries = max_retries
 
         self.base_url = (base_url or self.config.base_url or "").rstrip("/")
         env = self.config.api_key_env
         self.api_key = api_key or (os.getenv(env) if env else None)
 
-        # un endpoint compatible OpenAI sans URL n'est pas utilisable
         if self.format in ("openai", "cohere") and not self.base_url:
             raise ValueError(f"'{self.provider}' a besoin d'un base_url (passe base_url=...)")
-        # une API cloud a besoin de sa cle
         if self.config.auth != "none" and not self.api_key:
             hint = f"({env})" if env else ""
             raise ValueError(f"cle API manquante pour '{self.provider}' {hint}: "
                              f"definis la variable d'env ou passe api_key=")
 
-    # -- API publique (inchangee) --------------------------------------------
 
     def chat(self, prompt, system=None, temperature=None, seed=None):
-        # temperature: None => defaut de l'instance (0.7). Un juge passe 0.0.
-        # seed: None => sampling libre. Un entier => echantillon reproductible,
-        #   ignore par les fournisseurs qui ne le supportent pas.
         temp = self.temperature if temperature is None else temperature
         adapter = _ADAPTERS[self.format]
         return adapter(self, prompt, system, temp, seed)
 
     def is_alive(self):
-        # verif rapide que la cible repond, avant de l'attaquer
         try:
             if self.format == "ollama":
                 return requests.get(f"{self.base_url}/api/tags", timeout=3).status_code == 200
@@ -152,12 +121,11 @@ class LLMClient:
             if self.format == "cohere":
                 return bool(self.api_key)
             if self.format == "bedrock":
-                return True  # pas de ping simple; on tente directement
+                return True
         except requests.RequestException:
             return False
         return False
 
-    # -- plomberie interne ---------------------------------------------------
 
     def _headers(self) -> dict:
         h = dict(self.config.extra_headers)
@@ -170,7 +138,6 @@ class LLMClient:
         return h
 
     def _post(self, url, payload, headers=None):
-        # une seule couche de retry/backoff pour tous les fournisseurs (429, 5xx)
         headers = headers or self._headers()
         wait = 1.0
         for attempt in range(self.max_retries + 1):
@@ -186,10 +153,6 @@ class LLMClient:
         return r.json()
 
 
-# ---------------------------------------------------------------------------
-# ADAPTATEURS DE FORMAT (un par format de fil, pas par fournisseur)
-# ---------------------------------------------------------------------------
-
 def _adapt_ollama(client, prompt, system, temperature, seed):
     options = {"temperature": temperature}
     if seed is not None:
@@ -202,7 +165,6 @@ def _adapt_ollama(client, prompt, system, temperature, seed):
 
 
 def _adapt_openai(client, prompt, system, temperature, seed):
-    # meme forme de requete pour OpenAI et tout ce qui est compatible OpenAI
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
@@ -239,14 +201,12 @@ def _adapt_cohere(client, prompt, system, temperature, seed):
     messages.append({"role": "user", "content": prompt})
     payload = {"model": client.model, "messages": messages, "temperature": temperature}
     data = client._post(f"{client.base_url}/chat", payload)
-    # Cohere v2: message.content est une liste de blocs {type, text}
     blocks = data.get("message", {}).get("content", [])
     text = "".join(b.get("text", "") for b in blocks)
     return LLMResponse(text, client.provider, client.model, data)
 
 
 def _adapt_bedrock(client, prompt, system, temperature, seed):
-    # SigV4 -> on delegue a boto3, importe seulement si on utilise vraiment Bedrock
     try:
         import boto3
     except ImportError:
