@@ -186,14 +186,18 @@ def print_resume(res: dict) -> None:
     print(f"  dependances  : outil={d['outil']}  "
           f"{'vulnerables=' + str(d.get('vulnerables')) if 'vulnerables' in d else 'paquets=' + str(d.get('paquets_installes'))}")
     m = res["modeles"]
-    print(f"  modeles      : {m['total']} fichiers, {m['a_risque']} a risque (pickle confirme), "
-          f"{m.get('a_verifier', 0)} a verifier")
+    n_sur = sum(1 for f in m["fichiers"] if f["risque"] == "sur")
+    print(f"  modeles      : {m['total']} fichiers  ->  {n_sur} surs, "
+          f"{m['a_risque']} a risque (pickle confirme), {m.get('a_verifier', 0)} a verifier")
+    for f in m["fichiers"]:
+        if f["risque"] == "sur":
+            print(f"     [OK] {f['fichier']}  ({f['format']} : format sans code)")
     for f in m["fichiers"]:
         if f["risque"] == "risque":
-            print(f"     [!] {f['fichier']}  ({f['format']} : {f['raison']})")
+            print(f"     [!!] {f['fichier']}  ({f['format']} : {f['raison']})")
     for f in m["fichiers"]:
         if f["risque"] == "a_verifier":
-            print(f"     [?] {f['fichier']}  ({f['raison']})")
+            print(f"     [?]  {f['fichier']}  ({f['raison']})")
     print(f"  >>> verdict : {res['verdict']}")
 
 

@@ -1,7 +1,7 @@
 {
   "module": "LLM03_supply_chain",
   "owasp_category": "LLM03:2025 Supply Chain",
-  "timestamp": "2026-08-17T09:46:27.429025",
+  "timestamp": "2026-08-17T11:12:58.069821",
   "type": "statique (artefacts au repos, pas de comportement)",
   "verdict": "sain",
   "dossiers_scannes": [
