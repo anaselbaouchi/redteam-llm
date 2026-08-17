@@ -80,6 +80,23 @@ def sha256(chemin: str, limite_mo: int = 500) -> str:
 
 
 EXT_MODELE = set(FORMATS_SURS) | FORMATS_RISQUE
+TAILLE_BLOB_MIN = 5 * 1024 * 1024   # un vrai poids de modele fait au moins quelques Mo
+
+
+def _est_candidat(chemin: str, nom: str) -> bool:
+    ext = os.path.splitext(nom)[1].lower()
+    if ext in EXT_MODELE or nom.lower() == "pytorch_model.bin":
+        return True
+    # blobs sans extension (ex : Ollama sha256-...) : on regarde s'ils sont gros ET binaires
+    if ext == "" or nom.startswith("sha256-"):
+        try:
+            if os.path.getsize(chemin) >= TAILLE_BLOB_MIN:
+                with open(chemin, "rb") as f:
+                    tete = f.read(4)
+                return tete in (b"GGUF",) or tete[:1] == b"\x80" or tete[:2] == b"PK"
+        except Exception:
+            return False
+    return False
 
 
 def scanner_modeles(dossiers: list) -> dict:
@@ -89,9 +106,8 @@ def scanner_modeles(dossiers: list) -> dict:
             continue
         for racine, _, noms in os.walk(base):
             for nom in noms:
-                ext = os.path.splitext(nom)[1].lower()
-                if ext in EXT_MODELE or nom.lower() in ("pytorch_model.bin",):
-                    chemin = os.path.join(racine, nom)
+                chemin = os.path.join(racine, nom)
+                if _est_candidat(chemin, nom):
                     info = classer_format(chemin)
                     fichiers.append({"fichier": os.path.relpath(chemin, base), "base": base,
                                      "sha256": sha256(chemin), **info})

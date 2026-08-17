@@ -1,11 +1,90 @@
 {
   "module": "LLM03_supply_chain",
   "owasp_category": "LLM03:2025 Supply Chain",
-  "timestamp": "2026-08-17T09:31:50.916885",
+  "timestamp": "2026-08-17T09:46:27.429025",
   "type": "statique (artefacts au repos, pas de comportement)",
-  "verdict": "non_testable",
-  "raison": "pas d'acces aux artefacts (chat seulement) - hors perimetre boite noire",
-  "livrable": "fiche de cadrage",
+  "verdict": "sain",
+  "dossiers_scannes": [
+    "C:\\Users\\anase\\.ollama\\models",
+    "C:\\Users\\anase\\.cache\\huggingface",
+    "C:\\Users\\anase\\Projects\\redteam-llm\\lab"
+  ],
+  "dependances": {
+    "outil": "aucun",
+    "paquets_installes": 141,
+    "note": "installer pip-audit pour detecter les CVE : pip install pip-audit"
+  },
+  "modeles": {
+    "total": 8,
+    "a_risque": 0,
+    "a_verifier": 4,
+    "fichiers": [
+      {
+        "fichier": "blobs\\sha256-970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+        "base": "C:\\Users\\anase\\.ollama\\models",
+        "sha256": "970aa74c0a90ef74",
+        "format": "gguf",
+        "risque": "sur",
+        "raison": "format binaire sans code"
+      },
+      {
+        "fichier": "blobs\\sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff",
+        "base": "C:\\Users\\anase\\.ollama\\models",
+        "sha256": "trop_gros",
+        "format": "gguf",
+        "risque": "sur",
+        "raison": "format binaire sans code"
+      },
+      {
+        "fichier": "blobs\\sha256-f5074b1221da0f5a2910d33b642efa5b9eb58cfdddca1c79e16d7ad28aa2b31f",
+        "base": "C:\\Users\\anase\\.ollama\\models",
+        "sha256": "trop_gros",
+        "format": "gguf",
+        "risque": "sur",
+        "raison": "format binaire sans code"
+      },
+      {
+        "fichier": "hub\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\model.safetensors",
+        "base": "C:\\Users\\anase\\.cache\\huggingface",
+        "sha256": "53aa51172d142c89",
+        "format": "safetensors",
+        "risque": "sur",
+        "raison": "format sans execution de code"
+      },
+      {
+        "fichier": "chroma_data\\5e1696dd-86ea-4e63-bb56-b49cd17ee72d\\data_level0.bin",
+        "base": "C:\\Users\\anase\\Projects\\redteam-llm\\lab",
+        "sha256": "7f43260db5d7aa85",
+        "format": "bin",
+        "risque": "a_verifier",
+        "raison": "extension sensible mais pickle non confirme (verifier a la main)"
+      },
+      {
+        "fichier": "chroma_data\\5e1696dd-86ea-4e63-bb56-b49cd17ee72d\\header.bin",
+        "base": "C:\\Users\\anase\\Projects\\redteam-llm\\lab",
+        "sha256": "a0e81c3b22454233",
+        "format": "bin",
+        "risque": "a_verifier",
+        "raison": "extension sensible mais pickle non confirme (verifier a la main)"
+      },
+      {
+        "fichier": "chroma_data\\5e1696dd-86ea-4e63-bb56-b49cd17ee72d\\length.bin",
+        "base": "C:\\Users\\anase\\Projects\\redteam-llm\\lab",
+        "sha256": "3d77ed69d46545a7",
+        "format": "bin",
+        "risque": "a_verifier",
+        "raison": "extension sensible mais pickle non confirme (verifier a la main)"
+      },
+      {
+        "fichier": "chroma_data\\5e1696dd-86ea-4e63-bb56-b49cd17ee72d\\link_lists.bin",
+        "base": "C:\\Users\\anase\\Projects\\redteam-llm\\lab",
+        "sha256": "e3b0c44298fc1c14",
+        "format": "bin",
+        "risque": "a_verifier",
+        "raison": "extension sensible mais pickle non confirme (verifier a la main)"
+      }
+    ]
+  },
   "checklist": [
     "Un inventaire des composants (SBOM) est-il genere et tenu a jour ?",
     "Les modeles sont-ils au format safetensors (pas de pickle executable) ?",
