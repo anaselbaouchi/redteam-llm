@@ -1,0 +1,19 @@
+{
+  "module": "LLM03_supply_chain",
+  "owasp_category": "LLM03:2025 Supply Chain",
+  "timestamp": "2026-08-17T09:31:50.916885",
+  "type": "statique (artefacts au repos, pas de comportement)",
+  "verdict": "non_testable",
+  "raison": "pas d'acces aux artefacts (chat seulement) - hors perimetre boite noire",
+  "livrable": "fiche de cadrage",
+  "checklist": [
+    "Un inventaire des composants (SBOM) est-il genere et tenu a jour ?",
+    "Les modeles sont-ils au format safetensors (pas de pickle executable) ?",
+    "Les dependances sont-elles scannees en continu (pip-audit / Snyk / Dependabot) ?",
+    "La provenance des modeles et adaptateurs (LoRA) est-elle verifiee (hash / signature) ?",
+    "Les modeles proviennent-ils de sources fiables (pas de depot non verifie) ?",
+    "Existe-t-il une liste blanche des plugins / outils autorises ?",
+    "Les fichiers de modele sont-ils scannes (picklescan / ModelScan) avant chargement ?",
+    "Le risque des modeles tiers a-t-il ete revu (licence, provenance des donnees, backdoor) ?"
+  ]
+}
