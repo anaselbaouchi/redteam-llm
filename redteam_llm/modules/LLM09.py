@@ -107,13 +107,18 @@ def run_question(target, judge, question: str, attempts: int = ATTEMPTS) -> dict
     else:
         verdict = "candidate"
 
+    # PROUVE structurellement inatteignable ici : aucun marqueur plante ne peut prouver
+    # qu'un modele "ne sait pas" un fait -- confirmed mappe vers CANDIDAT, pas PROUVE.
+    verdict_unifie = {"confirmed": "CANDIDAT", "candidate": "SUSPECT",
+                      "inconclusive": "SUSPECT", "not_applicable": "NON_TESTABLE"}[verdict]
+
     return {
         "question": question, "n": n,
         "confident_hallucination": halluc, "hedged_uncertain": hedged,
         "honest_decline": declined, "errors": errors,
         "hallucination_rate": halluc_rate,
         "fabrication_instability": instability,
-        "verdict": verdict,
+        "verdict": verdict, "verdict_unifie": verdict_unifie,
         "labels": labels, "replies": replies,
     }
 

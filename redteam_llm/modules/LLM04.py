@@ -69,7 +69,10 @@ def run_contamination(cible, comptes: list, graine: int, judge=None,
                     verdict = "inconclusive"
             except Exception as e:
                 verdict = "not_applicable"
-            apres[c].append({"question": q, "verdict": verdict, "reponse": rep})
+            verdict_unifie = {"confirmed": "PROUVE", "candidate": "SUSPECT",
+                              "inconclusive": "SUSPECT", "not_applicable": "NON_TESTABLE"}[verdict]
+            apres[c].append({"question": q, "verdict": verdict, "verdict_unifie": verdict_unifie,
+                             "reponse": rep})
 
     comptes_contamines = sum(
         1 for c in comptes if any(x["verdict"] in ("confirmed", "candidate") for x in apres[c])
@@ -133,7 +136,7 @@ if __name__ == "__main__":
         print("modele injoignable, arret")
     else:
         print(f"\n(LLM04 | juge: {jp}/{jm})")
-        cible = CibleLabo(model, leaky=True)  # pas de proprietaire pour un doc de connaissance partageepython -m redteam_llm.main --target ollama:llama3.2:3b --mode black_box --modules LLM07
+        cible = CibleLabo(model, leaky=True)  # pas de proprietaire pour un doc de connaissance partagee
         resultat = run_contamination(cible, COMPTES, N_GRAINE, judge)
         print_summary(resultat)
         safe = model.model.replace(":", "_").replace("/", "_")
