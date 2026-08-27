@@ -140,6 +140,24 @@ def _run_llm08(ctx: RunContext):
     return path, {"susceptibilite": susc, "detecteur": detecteur, "cross_frontiere": cross}
 
 
+def _run_llm04(ctx: RunContext):
+    from redteam_llm.modules import LLM04
+    from redteam_llm.modules.LLM08 import CibleLabo
+    cible = CibleLabo(ctx.client, leaky=True)  # pas de proprietaire pour un doc de connaissance partagee
+    resultat = LLM04.run_contamination(cible, LLM04.COMPTES, LLM04.N_GRAINE, ctx.judge)
+    path = f"results/llm04/llm04_results_{ctx.provider}_{_safe(ctx.model)}.json"
+    LLM04.export_results(resultat, ctx.client, ctx.judge, path)
+    return path, resultat
+
+
+def _run_llm09(ctx: RunContext):
+    from redteam_llm.modules import LLM09
+    findings = LLM09.run_all(ctx.client, ctx.judge)
+    path = f"results/llm09/llm09_results_{ctx.provider}_{_safe(ctx.model)}.json"
+    LLM09.export_results(findings, ctx.client, ctx.judge, path)
+    return path, findings
+
+
 def _run_llm10(ctx: RunContext):
     from redteam_llm.modules import LLM10
     findings = LLM10.run_attack(ctx.client)
@@ -156,6 +174,8 @@ MODULE_SPECS = {
               "needs_client": True, "needs_judge": False, "run": _run_llm02},
     "LLM03": {"owasp_id": "LLM03:2025", "modes": {"static", "black_box"},
               "needs_client": False, "needs_judge": False, "run": _run_llm03},
+    "LLM04": {"owasp_id": "LLM04:2025", "modes": {"white_box"},
+              "needs_client": True, "needs_judge": True, "run": _run_llm04},
     "LLM05": {"owasp_id": "LLM05:2025", "modes": {"white_box", "black_box"},
               "needs_client": True, "needs_judge": False, "run": _run_llm05},
     "LLM06": {"owasp_id": "LLM06:2025", "modes": {"white_box", "black_box"},
@@ -164,6 +184,8 @@ MODULE_SPECS = {
               "needs_client": True, "needs_judge": True, "run": _run_llm07},
     "LLM08": {"owasp_id": "LLM08:2025", "modes": {"white_box", "black_box"},
               "needs_client": True, "needs_judge": True, "run": _run_llm08},
+    "LLM09": {"owasp_id": "LLM09:2025", "modes": {"white_box", "black_box"},
+              "needs_client": True, "needs_judge": True, "run": _run_llm09},
     "LLM10": {"owasp_id": "LLM10:2025", "modes": {"white_box", "black_box"},
               "needs_client": True, "needs_judge": False, "run": _run_llm10},
 }
