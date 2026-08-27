@@ -154,10 +154,22 @@ def artefacts_locaux() -> list:
 
 # --- Orchestration : la porte d'acces ----------------------------------------
 
+def _verdict_unifie(verdict: str, modeles: dict) -> str:
+    # Vocabulaire commun aux 8 modules ; pas de CANDIDAT ici (statique, pas de juge).
+    if verdict == "non_testable":
+        return "NON_TESTABLE"
+    if verdict == "faille":
+        return "PROUVE"
+    if modeles.get("a_verifier", 0) > 0:
+        return "SUSPECT"  # extension sensible mais format non confirme par magic bytes
+    return "SAIN"
+
+
 def run(a_acces: bool, dossiers_modeles: list = None) -> dict:
     if not a_acces:
         return {
             "verdict": "non_testable",
+            "verdict_unifie": "NON_TESTABLE",
             "raison": "pas d'acces aux artefacts (chat seulement) - hors perimetre boite noire",
             "livrable": "fiche de cadrage",
             "checklist": CADRAGE_CHECKLIST,
@@ -166,8 +178,10 @@ def run(a_acces: bool, dossiers_modeles: list = None) -> dict:
     deps = scanner_dependances()
     modeles = scanner_modeles(dossiers)
     faille = deps.get("vulnerables", 0) > 0 or modeles["a_risque"] > 0
+    verdict = "faille" if faille else "sain"
     return {
-        "verdict": "faille" if faille else "sain",
+        "verdict": verdict,
+        "verdict_unifie": _verdict_unifie(verdict, modeles),
         "dossiers_scannes": dossiers,
         "dependances": deps,
         "modeles": modeles,

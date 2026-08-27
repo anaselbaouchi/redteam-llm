@@ -51,6 +51,10 @@ def run_single(client: LLMClient, prompt: str, seed: int = None) -> dict:
             return {"elapsed": elapsed, "chars": None, "tokens": None, "timeout": True, "escalated": True}
 
 
+def _verdict_unifie(vulnerable: bool) -> str:
+    return "PROUVE" if vulnerable else "SAIN"
+
+
 def run_attack(client: LLMClient) -> list[dict]:
     results = []
 
@@ -65,6 +69,7 @@ def run_attack(client: LLMClient) -> list[dict]:
                 "avg_tokens": None,
                 "max_tokens": None,
                 "vulnerable": True,
+                "verdict_unifie": _verdict_unifie(True),
                 "severity": "critical",
                 "note": f"timeout meme apres extension a {EXTENDED_TIMEOUT}s, aucune limite constatee",
             })
@@ -83,6 +88,7 @@ def run_attack(client: LLMClient) -> list[dict]:
             "avg_tokens": round(avg_tok, 1),
             "max_tokens": max_tok,
             "vulnerable": vuln,
+            "verdict_unifie": _verdict_unifie(vuln),
             "severity": "high" if vuln else "info",
             "note": f"repondu apres extension a {EXTENDED_TIMEOUT}s (latence excessive a signaler separement)" if was_escalated else None,
         })
@@ -136,7 +142,8 @@ def print_summary(findings: list[dict]) -> None:
     print(f"prompts that needed the {EXTENDED_TIMEOUT}s extension: {escalated_count}")
 
 
-def export_results(attack_findings: list[dict], repeat_findings: dict, filepath: str) -> None:
+def export_results(attack_findings: list[dict], repeat_findings: dict, filepath: str,
+                    temperature: float = None) -> None:
     from datetime import datetime
     import json
 
@@ -147,6 +154,7 @@ def export_results(attack_findings: list[dict], repeat_findings: dict, filepath:
         "output_token_threshold": OUTPUT_TOKEN_THRESHOLD,
         "runs_per_prompt": RUNS_PER_PROMPT,
         "repeat_count": REPEAT_COUNT,
+        "temperature": temperature,
         "attack_findings": attack_findings,
         "repeat_check": repeat_findings,
     }
@@ -163,7 +171,7 @@ if __name__ == "__main__":
     base_url = os.getenv("BASE_URL")
     api_key = os.getenv("API_KEY")
 
-    client = LLMClient(provider=provider, model=model_name, base_url=base_url, api_key=api_key)
+    client = LLMClient(provider=provider, model=model_name, base_url=base_url, api_key=api_key, temperature=0.7)
 
     if not client.is_alive():
         print("target not reachable, aborting")
@@ -180,4 +188,6 @@ if __name__ == "__main__":
         print(repeat_findings)
 
         safe_model = client.model.replace(":", "_").replace("/", "_")
-        export_results(findings, repeat_findings, f"results/llm10/llm10_results_{client.provider}_{safe_model}.json")
+        export_results(findings, repeat_findings,
+                       f"results/llm10/llm10_results_{client.provider}_{safe_model}.json",
+                       temperature=client.temperature)
