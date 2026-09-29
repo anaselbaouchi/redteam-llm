@@ -197,6 +197,58 @@ class CibleLabo:
         return self.model.chat(msg, system=SYSTEM, seed=0, temperature=0).text or ""
 
 
+# --- Black box : scan de capacites sur un endpoint de chat --------------------
+
+class CibleModele:
+    """Cible = simple endpoint de chat : aucun canal d'injection expose."""
+
+    def __init__(self, model):
+        self.model = model
+
+    def canaux(self) -> set:
+        return set()
+
+    def injecter(self, texte, canal, identite="user"):
+        raise NotImplementedError("endpoint de chat : aucun canal d'injection expose")
+
+    def demander(self, question: str, identite: str = "user") -> str:
+        return self.model.chat(question, temperature=0, seed=0).text or ""
+
+
+_ATTAQUE_VERS_UNIFIE = {"prouve": "PROUVE", "susceptible": "SUSPECT",
+                        "rien": "SAIN", "non_testable": "NON_TESTABLE"}
+
+
+def verdict_unifie_capacite(entree: dict) -> str:
+    statut = entree.get("statut")
+    if statut == "non_testable":
+        return "NON_TESTABLE"
+    if statut == "revendiquee_non_confirmee":
+        return "SAIN"
+    return _ATTAQUE_VERS_UNIFIE.get(entree.get("attaque", {}).get("verdict"), "NON_TESTABLE")
+
+
+def run_black_box(model, judge, filepath, cible=None) -> dict:
+    """Lance le moteur de capacites, ajoute verdict_unifie par capacite, exporte le JSON."""
+    from redteam_llm.core.capability_scan import scanner  # import tardif (evite le cycle)
+    res = scanner(cible or CibleModele(model), judge)
+    capacites = [{**e, "verdict_unifie": verdict_unifie_capacite(e)} for e in res["carte"]]
+    payload = {
+        "module": "LLM08_vector_embedding_weaknesses",
+        "owasp_category": "LLM08:2025 Vector and Embedding Weaknesses",
+        "mode": "black_box", "timestamp": datetime.now().isoformat(),
+        "provider": model.provider, "model": model.model,
+        "judge_model": getattr(judge, "model", None),
+        "capacites": capacites, "recon": res["recon"],
+        "surface_a_verifier": res["surface_a_verifier"],
+    }
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+    print(f"\nresults exported to {filepath}")
+    return payload
+
+
 # --- Lancement + resume + export --------------------------------------------
 
 def run_susceptibilite(model, judge, sujets=None, n=N) -> list:
@@ -266,4 +318,4 @@ if __name__ == "__main__":
         print_summary(susc, detecteur, cross)
         safe = model.model.replace(":", "_").replace("/", "_")
         export_results(susc, detecteur, cross, model, judge,
-                       f"results/llm08/llm08_results_{model.provider}_{safe}.json") 
+                       f"results/llm08/llm08_results_{model.provider}_{safe}.json")

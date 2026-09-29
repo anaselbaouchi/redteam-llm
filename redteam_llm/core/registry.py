@@ -126,7 +126,8 @@ def _run_llm07(ctx: RunContext):
 def _run_llm08(ctx: RunContext):
     from redteam_llm.modules import LLM08
     if ctx.mode == "black_box":
-        return None, {"note": "non_testable"}
+        path = f"results/llm08/llm08_blackbox_results_{ctx.provider}_{_safe(ctx.model)}.json"
+        return path, LLM08.run_black_box(ctx.client, ctx.judge, path)
     susc = LLM08.run_susceptibilite(ctx.client, ctx.judge)
     detecteur = LLM08.valider_detecteur()
     cross = [
